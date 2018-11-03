@@ -109,44 +109,44 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 	sendFile(connection, localfilename, sdfsfilename)
 }
 
-func put(localfilename string, sdfsfilename string) {
-	//put(localfilename string, sdfsfilename string, memberlist *[]MemberID, consistency int)
-	/*
-	   add two more parameters, targetaddress, memberlist, consistency=4
-	*/
-	// modeldata target & memberlist
-	consistency := 2
-	target := "localhost:27000"
-	var memberList []MemberID
-	p := new(MemberID)
-	p.LocalIP = "localhost:27001"
-	p.JoinedTime = time.Now()
-	p1 := new(MemberID)
-	p1.LocalIP = "localhost:27002"
-	p1.JoinedTime = time.Now()
-	p2 := new(MemberID)
-	p2.LocalIP = "localhost:27003"
-	p2.JoinedTime = time.Now()
-	*memberList = append(*memberList, p)
-	*memberList = append(*memberList, p1)
-	*memberList = append(*memberList, p2)
-	// find
-	for i, Member := range *memberList {
-		if (&Member.LocalIP).Equal(&(message.Member)) {
-			*memberList = append((*memberList)[:i], (*memberList)[i+1:]...)
-			fmt.Println("A member voluntarily left the group:")
-			fmt.Println(message.Member)
-			fmt.Println()
+// func put(localfilename string, sdfsfilename string) {
+// 	//put(localfilename string, sdfsfilename string, memberlist *[]MemberID, consistency int)
+// 	/*
+// 	   add two more parameters, targetaddress, memberlist, consistency=4
+// 	*/
+// 	// modeldata target & memberlist
+// 	consistency := 2
+// 	target := "localhost:27000"
+// 	var memberList []MemberID
+// 	p := new(MemberID)
+// 	p.LocalIP = "localhost:27001"
+// 	p.JoinedTime = time.Now()
+// 	p1 := new(MemberID)
+// 	p1.LocalIP = "localhost:27002"
+// 	p1.JoinedTime = time.Now()
+// 	p2 := new(MemberID)
+// 	p2.LocalIP = "localhost:27003"
+// 	p2.JoinedTime = time.Now()
+// 	*memberList = append(*memberList, p)
+// 	*memberList = append(*memberList, p1)
+// 	*memberList = append(*memberList, p2)
+// 	// find
+// 	for i, Member := range *memberList {
+// 		if (&Member.LocalIP).Equal(&(message.Member)) {
+// 			*memberList = append((*memberList)[:i], (*memberList)[i+1:]...)
+// 			fmt.Println("A member voluntarily left the group:")
+// 			fmt.Println(message.Member)
+// 			fmt.Println()
 
-			logMsg, _ := json.Marshal(message.Member)
-			mp2util.WriteLog("Delete: Member voluntarily left the group:" + string(logMsg))
+// 			logMsg, _ := json.Marshal(message.Member)
+// 			mp2util.WriteLog("Delete: Member voluntarily left the group:" + string(logMsg))
 
-			for i := 0; i < 2; i++ {
-				sendFileToClient()
-			}
+// 			for i := 0; i < 2; i++ {
+// 				sendFileToClient()
+// 			}
 
-		}
-	}
+// 		}
+// 	}
 	// if getlocaladdress() == leaderAddress:
 	// address = findaddress(sdfsfilename);
 	// if address in memberlist:
