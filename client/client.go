@@ -110,43 +110,11 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 }
 
 func put(localfilename string, sdfsfilename string) {
-	//put(localfilename string, sdfsfilename string, addressed *[]string)
-	/*
-	   add two more parameters, targetaddress, memberlist, consistency=4
-	*/
-	// modeldata target & memberlist
-	// target := "localhost:27000"
-	// var memberList []MemberID
-	// p := new(MemberID)
-	// p.LocalIP = "localhost:27001"
-	// p.JoinedTime = time.Now()
-	// p1 := new(MemberID)
-	// p1.LocalIP = "localhost:27002"
-	// p1.JoinedTime = time.Now()
-	// p2 := new(MemberID)
-	// p2.LocalIP = "localhost:27003"
-	// p2.JoinedTime = time.Now()
-	// *memberList = append(*memberList, p)
-	// *memberList = append(*memberList, p1)
-	// *memberList = append(*memberList, p2)
-	addresses := []string{"localhost:27002", "localhost:27001"}
-	// find
+	//should be one more paramater for function: addresses []string
+	addresses := []string{"localhost:27001"}
 	for _, address := range addresses {
 		SendFileTo(address, localfilename, sdfsfilename)
 	}
-	// if getlocaladdress() == leaderAddress:
-	// address = findaddress(sdfsfilename);
-	// if address in memberlist:
-	// _,e = sendfile(localfilename, sdfsfilname, []address)
-	// if e: resend??
-	// else connect master:
-	// reconnect master if connection fail;
-	// if failed over 3 times:
-	// reelect leader and reconnecr leader;
-	// ask leader for sending address.[]address
-	// if address in memberlist:
-	// _,e = sendfile(localfilename, sdfsfilname, []address)
-	// if e: resend??
 }
 
 func main() {
