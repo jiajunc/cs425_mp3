@@ -4,12 +4,16 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"net/rpc"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var masterAddress = "127.0.0.1"
 
 const BUFFERSIZE = 1024
 
@@ -29,18 +33,19 @@ func initi() {
 
 		switch userCommand {
 		case "put":
-			if len(userInput) < 3 {
+			if len(userInput) != 3 {
 				fmt.Println("Wrong pattern! Enter 'put localfilename sdfsfilename' to upload file.")
 			}
-			//target *[]MemberId = findTarget() //ask for master target
-			//put(localfilename string, sdfsfilename string, addresses *[]string)
+			addresses := getIP(masterAddress)
+			fmt.Println("excuting Put method")
+			put(userInput[1], userInput[2], addresses)
 		case "get":
-			if len(userInput) < 3 {
+			if len(userInput) != 3 {
 				fmt.Println("Wrong pattern! Enter 'get sdfsfilename localfilename' to fetch file.")
 			}
 			//get()
 		case "delete":
-			if len(userInput) < 2 {
+			if len(userInput) != 2 {
 				fmt.Println("Wrong pattern! Enter 'delete sdfsfilename' to delete file.")
 			}
 			//delete()
@@ -109,16 +114,43 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 	sendFile(connection, localfilename, sdfsfilename)
 }
 
-func put(localfilename string, sdfsfilename string) {
+func put(localfilename string, sdfsfilename string, addresses []string) {
 	//should be one more paramater for function: addresses []string
-	addresses := []string{"localhost:27001"}
+	// addresses := []string{"localhost:27001"}
 	for _, address := range addresses {
-		SendFileTo(address, localfilename, sdfsfilename)
+		SendFileTo(address+":27001", localfilename, sdfsfilename)
 	}
 }
 
+func GetLocalIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
+}
+
+func getIP(masterAddress string) []string {
+	var localIP string
+	localIP = GetLocalIP().String()
+	var list []string
+	client, e := rpc.DialHTTP("tcp", masterAddress+":1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+	}
+	err := client.Call("IP.ReplyIPAddress", localIP, &list)
+	if err != nil {
+		log.Fatal("Reply from master error", err)
+	}
+	fmt.Println(list)
+	return list
+}
+
 func main() {
-	// initi()
-	// isLeader := false
-	put("dummyfile.txt", "receivedfile.txt")
+	initi()
+	// type "put dummyfile.txt receivedfile.txt" for test
 }
