@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"net/rpc"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +19,8 @@ type MemberID struct {
 	LocalIP    string
 	JoinedTime time.Time
 }
+
+type IP string
 
 //cli api
 func initi() {
@@ -147,23 +151,54 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 
 // 		}
 // 	}
-	// if getlocaladdress() == leaderAddress:
-	// address = findaddress(sdfsfilename);
-	// if address in memberlist:
-	// _,e = sendfile(localfilename, sdfsfilname, []address)
-	// if e: resend??
-	// else connect master:
-	// reconnect master if connection fail;
-	// if failed over 3 times:
-	// reelect leader and reconnecr leader;
-	// ask leader for sending address.[]address
-	// if address in memberlist:
-	// _,e = sendfile(localfilename, sdfsfilname, []address)
-	// if e: resend??
+// if getlocaladdress() == leaderAddress:
+// address = findaddress(sdfsfilename);
+// if address in memberlist:
+// _,e = sendfile(localfilename, sdfsfilname, []address)
+// if e: resend??
+// else connect master:
+// reconnect master if connection fail;
+// if failed over 3 times:
+// reelect leader and reconnecr leader;
+// ask leader for sending address.[]address
+// if address in memberlist:
+// _,e = sendfile(localfilename, sdfsfilname, []address)
+// if e: resend??
+// }
+
+var masterAddress = "127.0.0.1"
+
+func GetLocalIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
+}
+
+func getIP() []string {
+	var localIP string
+	localIP = GetLocalIP().String()
+	var list []string
+	client, e := rpc.DialHTTP("tcp", "127.0.0.1:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+	}
+	err := client.Call("IP.ReplyIPAddress", localIP, &list)
+	if err != nil {
+		log.Fatal("Reply from master error", err)
+	}
+	fmt.Println(list)
+	return list
 }
 
 func main() {
 	// initi()
 	// isLeader := false
-	SendFileTo("localhost:27001", "dummyfile.txt", "receivedfile.txt")
+	// SendFileTo("localhost:27001", "dummyfile.txt", "receivedfile.txt")
+	getIP()
 }
