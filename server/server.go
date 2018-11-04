@@ -2,6 +2,7 @@ package main
 
 import (
 	// "bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,10 +12,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const BUFFERSIZE = 1024
+
+// isMaster := true
 
 type MemberID struct {
 	LocalIP    string
@@ -24,6 +28,11 @@ type MemberID struct {
 var memberList []MemberID
 
 type IP string
+
+var fileToNodes = struct {
+	sync.RWMutex
+	m map[string][]string
+}{m: make(map[string][]string)}
 
 func TcpListening() {
 	server, err := net.Listen("tcp", "localhost:27001")
@@ -78,6 +87,10 @@ func TcpListening() {
 	}
 }
 
+// func (t *IP) replyFile() error {
+
+// }
+
 func (t *IP) ReplyIPAddress(ip string, returnList *[]string) error {
 	idx := 0
 	for _, v := range memberList {
@@ -89,6 +102,18 @@ func (t *IP) ReplyIPAddress(ip string, returnList *[]string) error {
 	for i := 1; i < 4; i++ {
 		*returnList = append(*returnList, memberList[(idx+i)%len(memberList)].LocalIP)
 	}
+	return nil
+}
+
+func (t *IP) ReplyFilesNodes(fileName string, returnList *[]string) error {
+	fileToNodes.RLock()
+	v, ok := fileToNodes.m[fileName]
+	if ok == false {
+		fmt.Println("There is no such file...")
+		return errors.New("There is no such file")
+	}
+	*returnList = v
+	fileToNodes.RUnlock()
 	return nil
 }
 
@@ -112,5 +137,4 @@ func main() {
 	for {
 
 	}
-
 }

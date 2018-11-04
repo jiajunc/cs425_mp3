@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/rpc"
@@ -49,13 +50,22 @@ func initi() {
 				fmt.Println("Wrong pattern! Enter 'delete sdfsfilename' to delete file.")
 			}
 			//delete()
+		case "ls":
+			if len(userInput) != 2 {
+				fmt.Println("Wrong pattern! Enter 'ls sdfsfilename' to search machines.")
+			}
+		case "store":
+			if len(userInput) != 1 {
+				fmt.Println("Wrong pattern! Enter 'store' to search files.")
+			}
 		case "exit":
 			return
 		default:
 			fmt.Println("Wrong input! Please try again:")
 			fmt.Println("Enter 'put localfilename sdfsfilename' to upload file.")
 			fmt.Println("Enter 'get sdfsfilename localfilename' to fetch file.")
-			fmt.Println("Enter 'delete sdfsfilename' to delete file.")
+			fmt.Println("Enter 'ls sdfsfilename' to list all addresses the file currently stored.")
+			fmt.Println("Enter 'store' list all files stored at this machine.")
 		}
 	}
 }
@@ -150,7 +160,45 @@ func getIP(masterAddress string) []string {
 	return list
 }
 
+func getFileNodes(fileName string) ([]string, error) {
+	var nodes []string
+	client, e := rpc.DialHTTP("tcp", "localhost:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+		return nodes, e
+	}
+	err := client.Call("IP.ReplyFilesNodes", fileName, &nodes)
+	if err != nil {
+		log.Fatal("Reply from master error", err)
+		return nodes, err
+	}
+	fmt.Println(nodes)
+	return nodes, nil
+}
+
+func get(sdfsFileName string, localFileName string) error {
+	nodes, err := getFileNodes(sdfsFileName)
+	if err != nil {
+		log.Fatal("error when get...", err)
+		return err
+	}
+	return nil
+}
+
+func showLocalStoredFiles() []string {
+	fileInfo, err := ioutil.ReadDir("../server")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var files []string
+	for _, file := range fileInfo {
+		files = append(files, file.Name())
+	}
+	fmt.Println(files)
+	return files
+}
+
 func main() {
-	initi()
-	// type "put dummyfile.txt receivedfile.txt" for test
+	// initi()
+	showLocalStoredFiles()
 }
