@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -37,9 +38,8 @@ func initi() {
 			if len(userInput) != 3 {
 				fmt.Println("Wrong pattern! Enter 'put localfilename sdfsfilename' to upload file.")
 			}
-			addresses := getIP(masterAddress)
 			fmt.Println("excuting Put method")
-			put(userInput[1], userInput[2], addresses)
+			// put(userInput[1], userInput[2])
 		case "get":
 			if len(userInput) != 3 {
 				fmt.Println("Wrong pattern! Enter 'get sdfsfilename localfilename' to fetch file.")
@@ -122,17 +122,31 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 		panic(err)
 	}
 	defer connection.Close()
+	t := time.Now()
+	tUnix := int(t.Unix())
+	sdfsfilename += "-" + strconv.Itoa(tUnix)
 	fmt.Println("Client: Connected to server, start sending the file")
 	sendFile(connection, localfilename, sdfsfilename)
 }
 
-func put(localfilename string, sdfsfilename string, addresses []string) {
-	//should be one more paramater for function: addresses []string
-	// addresses := []string{"localhost:27001"}
-	for _, address := range addresses {
-		SendFileTo(address+":27001", localfilename, sdfsfilename)
-	}
-}
+// func put(localfilename string, sdfsfilename string) {
+// 	//should be one more paramater for function: addresses []string
+// 	// addresses := []string{"localhost:27001"}
+// 	nodes, err := getFileNodes(sdfsfilename)
+// 	// Insert a new file
+// 	if err == nil {
+// 		for _, address := range nodes {
+// 			SendFileTo(address+":27001", localfilename, sdfsfilename)
+// 		}
+// 	} else { // update a file
+// 		files, e := getNodeFiles(nodes[0])
+// 		if e != nil {
+// 			log.Fatal(e)
+// 		}
+
+// 	}
+
+// }
 
 func GetLocalIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
@@ -178,14 +192,50 @@ func getFileNodes(fileName string) ([]string, error) {
 	return nodes, nil
 }
 
-// func get(sdfsFileName string, localFileName string) error {
-// nodes, err := getFileNodes(sdfsFileName)
-// if err != nil {
-// 	log.Fatal("error when get...", err)
-// 	return err
-// }
-// 	return nil
-// }
+func getNodeFiles(nodeAddress string) ([]string, error) {
+	var files []string
+	client, e := rpc.DialHTTP("tcp", "localhost:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+		return nil, e
+	}
+	e = client.Call("IP.ReplyNodeFiles", nodeAddress, &files)
+	if e != nil {
+		log.Fatal("Reply from server error", e)
+		return nil, e
+	}
+	return files, nil
+}
+
+func get(sdfsFileName string, localFileName string) error {
+	// nodes, err := getFileNodes(sdfsFileName)
+	_, err := getFileNodes(sdfsFileName)
+	if err != nil {
+		log.Fatal("error when get...", err)
+		return err
+	}
+	// localIP := GetLocalIP().String()
+	client, e := rpc.DialHTTP("tcp", "localhost:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+		return e
+	}
+	var args []string
+	args = append(args, sdfsFileName)
+	args = append(args, localFileName)
+	args = append(args, "127.0.0.1")
+	var reply bool
+	err = client.Call("IP.ReplyFile", args, &reply)
+	if err != nil {
+		log.Fatal("Reply file get error...", err)
+		return err
+	}
+	if reply != true {
+		log.Fatal("Send file failure")
+		return errors.New("Send file failure")
+	}
+	return nil
+}
 
 func showLocalStoredFiles() []string {
 	fileInfo, err := ioutil.ReadDir("../server")
@@ -234,9 +284,6 @@ func deleteRequest(nodes []string, sdfsFileName string) error {
 func main() {
 	//input "put dummyfile.txt receivedfile.txt" to test put
 	//input "delete receivedfile.txt" to test put
-	initi()
-
-	// showLocalStoredFiles()
-	// getFileNodes("dummy")
-	// delete("dummyfile.txt")
+	// initi()
+	get("dummyFile.txt", "dummy")
 }
