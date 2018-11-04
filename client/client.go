@@ -87,10 +87,12 @@ func sendFile(connection net.Conn, localfilename string, sdfsfilename string) {
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	localfileName := fillString(fileInfo.Name(), 64)
 	receivedfileName := fillString(sdfsfilename, 65)
+	request := fillString("0", 5)
 	fmt.Println("Client: Sending filename and filesize!")
 	connection.Write([]byte(fileSize))
 	connection.Write([]byte(localfileName))
 	connection.Write([]byte(receivedfileName))
+	connection.Write([]byte(request))
 	sendBuffer := make([]byte, BUFFERSIZE)
 	fmt.Println("Client: Start sending file!")
 	for {
@@ -143,7 +145,6 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 // 		if e != nil {
 // 			log.Fatal(e)
 // 		}
-
 // 	}
 
 // }
@@ -285,5 +286,7 @@ func main() {
 	//input "put dummyfile.txt receivedfile.txt" to test put
 	//input "delete receivedfile.txt" to test put
 	// initi()
-	get("dummyFile.txt", "dummy")
+	// get("dummyFile.txt", "dummy")
+	// SendFileTo("127.0.0.1:27002", "dummyfile.txt", "receivedfile.txt")
+	get("dummyfile.txt", "test.txt")
 }

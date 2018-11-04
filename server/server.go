@@ -54,9 +54,10 @@ func TcpListening() {
 			os.Exit(1)
 		}
 		fmt.Println("Server: Client connected")
-		bufferSdfsFileName := make([]byte, 64)
-		bufferLocalFileName := make([]byte, 65)
+		bufferLocalFileName := make([]byte, 64)
+		bufferSdfsFileName := make([]byte, 65)
 		bufferFileSize := make([]byte, 10)
+		bufferRequest := make([]byte, 5)
 
 		num, e := connection.Read(bufferFileSize)
 		if e != nil {
@@ -64,15 +65,17 @@ func TcpListening() {
 		}
 		fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
+		connection.Read(bufferLocalFileName)
+		localFileName := strings.Trim(string(bufferLocalFileName), ":")
+		fmt.Println("Server: local file:", localFileName)
+
 		connection.Read(bufferSdfsFileName)
 		sdfsFileName := strings.Trim(string(bufferSdfsFileName), ":")
 		fmt.Println("Server: receiving file:", sdfsFileName)
-		// fmt.Println("Server: sdfsFileName -- " + sdfsFileName)
 
-		connection.Read(bufferLocalFileName)
-		localFileName := strings.Trim(string(bufferLocalFileName), ":")
-		fmt.Println("Server: writing file:", localFileName)
-		// fmt.Println("Server: " + localFileName)
+		connection.Read(bufferRequest)
+		request := strings.Trim(string(bufferRequest), ":")
+		fmt.Println("Server: request state:", request)
 
 		// newFile, err := os.Create(localFileName)
 		newFile, err := os.Create(sdfsFileName)
@@ -120,10 +123,13 @@ func sendFile(connection net.Conn, localFileName string, sdfsFileName string) {
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	sdfsFileName = fillString(sdfsFileName, 64)
 	localFileName = fillString(localFileName, 65)
+	request := fillString("1", 5)
 	fmt.Println("Client: Sending filename and filesize!")
 	connection.Write([]byte(fileSize))
 	connection.Write([]byte(localFileName))
 	connection.Write([]byte(sdfsFileName))
+	connection.Write([]byte(request))
+
 	sendBuffer := make([]byte, BUFFERSIZE)
 	fmt.Println("Client: Start sending file!")
 	for {
@@ -221,6 +227,9 @@ func RespondIPListening() {
 	}
 	fmt.Println("1105 succeed")
 	go http.Serve(l, nil)
+	for {
+
+	}
 }
 
 func (t *IP) DeleteFiles(fileName string, numb *int) error {
@@ -232,15 +241,54 @@ func (t *IP) DeleteFiles(fileName string, numb *int) error {
 	return nil
 }
 
+/*
+   This function will be used to tell the master when a normal node received a file
+*/
+func ackMaster(sdfsFileName string, localIP string, masterAddress string) error {
+	var n int
+	var args []string
+	args = append(args, sdfsFileName)
+	args = append(args, localIP)
+	client, e := rpc.DialHTTP("tcp", masterAddress+":1105")
+	if e != nil {
+		log.Fatal("Error when connect to master")
+	}
+	err := client.Call("IP.ReceivedAck", args, &n)
+	if err != nil {
+		log.Fatal("Can't send ack to master", err)
+	}
+	return nil
+}
+
+/*
+   This function will be used to update the master store information
+*/
+func (t *IP) ReceivedAck(args []string, num *int) error {
+	fileToNodes.RLock()
+	nodeToFiles.RLock()
+	fileToNodes.m[args[0]] = append(fileToNodes.m[args[0]], args[1])
+	nodeToFiles.m[args[1]] = append(fileToNodes.m[args[1]], args[0])
+	//func send repMaster() to other master
+	fileToNodes.RUnlock()
+	nodeToFiles.RUnlock()
+	fmt.Println("master received node successfully as bellow:")
+	fmt.Println(fileToNodes)
+	fmt.Println(nodeToFiles)
+	return nil
+}
+
+/*
+   This function will be used to send file to other master replica servers once master store new info.
+*/
+// func repMaster()
 func main() {
 	go TcpListening()
-	var m1 = MemberID{LocalIP: "127.0.0.1"}
-	fileToNodes.m["dummy"] = append(fileToNodes.m["dummy"], "test")
-	fileToNodes.m["dummyfile.txt"] = append(fileToNodes.m["dummyfile.txt"], "localhost")
-	fileToNodes.m["receivedfile.txt"] = append(fileToNodes.m["receivedfile.txt"], "localhost")
-	memberList = append(memberList, m1)
+	// var m1 = MemberID{LocalIP: "127.0.0.1"}
+	// fileToNodes.m["dummy"] = append(fileToNodes.m["dummy"], "test")
+	// fileToNodes.m["dummyfile.txt"] = append(fileToNodes.m["dummyfile.txt"], "localhost")
+	// fileToNodes.m["receivedfile.txt"] = append(fileToNodes.m["receivedfile.txt"], "localhost")
+	// memberList = append(memberList, m1)
 	RespondIPListening()
-	for {
-
-	}
+	// ackMaster("testfile", "testlocalIP", "localhost")
+	// SendFileTo("127.0.0.1", "receivedfile.txt", "servertest.txt")
 }
