@@ -72,17 +72,15 @@ func initi() {
 	}
 }
 
-func sendFile(connection net.Conn, localfilename string, sdfsfilename string) {
+func sendFile(connection net.Conn, localfilename string, sdfsfilename string) error {
 	defer connection.Close()
 	file, err := os.Open(localfilename)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	fileInfo, err := file.Stat()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	localfileName := fillString(fileInfo.Name(), 64)
@@ -102,8 +100,11 @@ func sendFile(connection net.Conn, localfilename string, sdfsfilename string) {
 		}
 		connection.Write(sendBuffer)
 	}
+	if err != nil {
+		return err
+	}
 	fmt.Println("Client: File has been sent, closing connection!")
-	return
+	return nil
 }
 
 func fillString(retunString string, toLength int) string {
@@ -118,17 +119,21 @@ func fillString(retunString string, toLength int) string {
 	return retunString
 }
 
-func SendFileTo(address string, localfilename string, sdfsfilename string) {
+func SendFileTo(address string, localfilename string, sdfsfilename string) error {
 	connection, err := net.Dial("tcp", address)
 	if err != nil {
-		panic(err)
+		return (err)
 	}
 	defer connection.Close()
 	t := time.Now()
 	tUnix := int(t.Unix())
 	sdfsfilename += "-" + strconv.Itoa(tUnix)
 	fmt.Println("Client: Connected to server, start sending the file")
-	sendFile(connection, localfilename, sdfsfilename)
+	e := sendFile(connection, localfilename, sdfsfilename)
+	if e != nil {
+		return (e)
+	}
+	return nil
 }
 
 // func put(localfilename string, sdfsfilename string) {
@@ -259,9 +264,9 @@ func delete(sdfsFileName string) error {
 	}
 	err = deleteRequest(nodes, sdfsFileName)
 	if err != nil {
-		fmt.Println("Delet File Successfully")
+		return err
 	}
-	return err
+	return nil
 }
 
 func deleteRequest(nodes []string, sdfsFileName string) error {
@@ -288,5 +293,5 @@ func main() {
 	// initi()
 	// get("dummyFile.txt", "dummy")
 	// SendFileTo("127.0.0.1:27002", "dummyfile.txt", "receivedfile.txt")
-	get("dummyfile.txt", "test.txt")
+	get("receivedfile.txt-1541369096", "test.txt")
 }

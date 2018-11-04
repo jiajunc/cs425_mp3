@@ -94,31 +94,38 @@ func TcpListening() {
 			io.CopyN(newFile, connection, BUFFERSIZE)
 			receivedBytes += BUFFERSIZE
 		}
+
 		fmt.Println("Received file completely!")
+		// if request == '0'{
+		// 	fmt.Println("Sending acks to master")
+		// 	e := ackMaster(sdfsFileName, "local",memberList[0].LocalIP)
+		// }
 	}
 }
 
-func SendFileTo(address string, localfilename string, sdfsfilename string) {
+func SendFileTo(address string, localfilename string, sdfsfilename string) error {
 	connection, err := net.Dial("tcp", address+":27002")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer connection.Close()
 	fmt.Println("Client: Connected to server, start sending the file")
-	sendFile(connection, localfilename, sdfsfilename)
+	e := sendFile(connection, localfilename, sdfsfilename)
+	if e != nil {
+		return e
+	}
+	return nil
 }
 
-func sendFile(connection net.Conn, localFileName string, sdfsFileName string) {
+func sendFile(connection net.Conn, localFileName string, sdfsFileName string) error {
 	defer connection.Close()
 	file, err := os.Open(sdfsFileName)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	fileInfo, err := file.Stat()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	sdfsFileName = fillString(sdfsFileName, 64)
@@ -139,8 +146,11 @@ func sendFile(connection net.Conn, localFileName string, sdfsFileName string) {
 		}
 		connection.Write(sendBuffer)
 	}
+	if err != nil {
+		return err
+	}
 	fmt.Println("Client: File has been sent, closing connection!")
-	return
+	return nil
 }
 
 func fillString(retunString string, toLength int) string {
@@ -268,7 +278,7 @@ func (t *IP) ReceivedAck(args []string, num *int) error {
 	nodeToFiles.RLock()
 	fileToNodes.m[args[0]] = append(fileToNodes.m[args[0]], args[1])
 	nodeToFiles.m[args[1]] = append(fileToNodes.m[args[1]], args[0])
-	//func send repMaster() to other master
+	//func send repToMaster() to other master
 	fileToNodes.RUnlock()
 	nodeToFiles.RUnlock()
 	fmt.Println("master received node successfully as bellow:")
@@ -280,15 +290,16 @@ func (t *IP) ReceivedAck(args []string, num *int) error {
 /*
    This function will be used to send file to other master replica servers once master store new info.
 */
-// func repMaster()
+// func repToMaster() error{
+
+// }
 func main() {
 	go TcpListening()
-	// var m1 = MemberID{LocalIP: "127.0.0.1"}
+	var m1 = MemberID{LocalIP: "127.0.0.1"}
 	// fileToNodes.m["dummy"] = append(fileToNodes.m["dummy"], "test")
 	// fileToNodes.m["dummyfile.txt"] = append(fileToNodes.m["dummyfile.txt"], "localhost")
 	// fileToNodes.m["receivedfile.txt"] = append(fileToNodes.m["receivedfile.txt"], "localhost")
-	// memberList = append(memberList, m1)
+	memberList = append(memberList, m1)
 	RespondIPListening()
-	// ackMaster("testfile", "testlocalIP", "localhost")
-	// SendFileTo("127.0.0.1", "receivedfile.txt", "servertest.txt")
+	ackMaster("testfile", "testlocalIP", "localhost")
 }
