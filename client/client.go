@@ -50,6 +50,7 @@ func initi() {
 				fmt.Println("Wrong pattern! Enter 'delete sdfsfilename' to delete file.")
 			}
 			//delete()
+			delete(userInput[1])
 		case "ls":
 			if len(userInput) != 2 {
 				fmt.Println("Wrong pattern! Enter 'ls sdfsfilename' to search machines.")
@@ -64,6 +65,7 @@ func initi() {
 			fmt.Println("Wrong input! Please try again:")
 			fmt.Println("Enter 'put localfilename sdfsfilename' to upload file.")
 			fmt.Println("Enter 'get sdfsfilename localfilename' to fetch file.")
+			fmt.Println("Enter 'delete sdfsfilename' to delete file.")
 			fmt.Println("Enter 'ls sdfsfilename' to list all addresses the file currently stored.")
 			fmt.Println("Enter 'store' list all files stored at this machine.")
 		}
@@ -176,14 +178,14 @@ func getFileNodes(fileName string) ([]string, error) {
 	return nodes, nil
 }
 
-func get(sdfsFileName string, localFileName string) error {
-	nodes, err := getFileNodes(sdfsFileName)
-	if err != nil {
-		log.Fatal("error when get...", err)
-		return err
-	}
-	return nil
-}
+// func get(sdfsFileName string, localFileName string) error {
+// nodes, err := getFileNodes(sdfsFileName)
+// if err != nil {
+// 	log.Fatal("error when get...", err)
+// 	return err
+// }
+// 	return nil
+// }
 
 func showLocalStoredFiles() []string {
 	fileInfo, err := ioutil.ReadDir("../server")
@@ -198,7 +200,43 @@ func showLocalStoredFiles() []string {
 	return files
 }
 
+func delete(sdfsFileName string) error {
+	nodes, err := getFileNodes(sdfsFileName)
+	if err != nil {
+		log.Fatal("error when get...", err)
+		return err
+	}
+	err = deleteRequest(nodes, sdfsFileName)
+	if err != nil {
+		fmt.Println("Delet File Successfully")
+	}
+	return err
+}
+
+func deleteRequest(nodes []string, sdfsFileName string) error {
+
+	for _, node := range nodes {
+		var n int
+		client, e := rpc.DialHTTP("tcp", node+":1105")
+		if e != nil {
+			log.Fatal("Error when dial")
+			return e
+		}
+		err := client.Call("IP.DeleteFiles", sdfsFileName, &n)
+		if err != nil {
+			log.Fatal("Delete file fatal:")
+			return e
+		}
+	}
+	return nil
+}
+
 func main() {
-	// initi()
-	showLocalStoredFiles()
+	//input "put dummyfile.txt receivedfile.txt" to test put
+	//input "delete receivedfile.txt" to test put
+	initi()
+
+	// showLocalStoredFiles()
+	// getFileNodes("dummy")
+	// delete("dummyfile.txt")
 }

@@ -117,6 +117,15 @@ func (t *IP) ReplyFilesNodes(fileName string, returnList *[]string) error {
 	return nil
 }
 
+func (t *IP) DeleteFiles(fileName string, numb *int) error {
+	err := os.Remove(fileName)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return nil
+}
+
 func RespondIPListening() {
 	IP_reply := new(IP)
 	rpc.Register(IP_reply)
@@ -132,6 +141,9 @@ func RespondIPListening() {
 func main() {
 	go TcpListening()
 	var m1 = MemberID{LocalIP: "127.0.0.1"}
+	fileToNodes.m["dummy"] = append(fileToNodes.m["dummy"], "test")
+	fileToNodes.m["dummyfile.txt"] = append(fileToNodes.m["dummyfile.txt"], "localhost")
+	fileToNodes.m["receivedfile.txt"] = append(fileToNodes.m["receivedfile.txt"], "localhost")
 	memberList = append(memberList, m1)
 	RespondIPListening()
 	for {
