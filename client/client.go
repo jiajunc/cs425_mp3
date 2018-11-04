@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/rpc"
@@ -13,14 +14,14 @@ import (
 	"time"
 )
 
+var masterAddress = "127.0.0.1"
+
 const BUFFERSIZE = 1024
 
 type MemberID struct {
 	LocalIP    string
 	JoinedTime time.Time
 }
-
-type IP string
 
 //cli api
 func initi() {
@@ -33,18 +34,19 @@ func initi() {
 
 		switch userCommand {
 		case "put":
-			if len(userInput) < 3 {
+			if len(userInput) != 3 {
 				fmt.Println("Wrong pattern! Enter 'put localfilename sdfsfilename' to upload file.")
 			}
-			//target = findTarget() //ask for master target
-			//put(localfilename string, sdfsfilename string, memberlist *[]MemberID, consistency int)
+			addresses := getIP(masterAddress)
+			fmt.Println("excuting Put method")
+			put(userInput[1], userInput[2], addresses)
 		case "get":
-			if len(userInput) < 3 {
+			if len(userInput) != 3 {
 				fmt.Println("Wrong pattern! Enter 'get sdfsfilename localfilename' to fetch file.")
 			}
 			//get()
 		case "delete":
-			if len(userInput) < 2 {
+			if len(userInput) != 2 {
 				fmt.Println("Wrong pattern! Enter 'delete sdfsfilename' to delete file.")
 			}
 			//delete()
@@ -113,60 +115,13 @@ func SendFileTo(address string, localfilename string, sdfsfilename string) {
 	sendFile(connection, localfilename, sdfsfilename)
 }
 
-// func put(localfilename string, sdfsfilename string) {
-// 	//put(localfilename string, sdfsfilename string, memberlist *[]MemberID, consistency int)
-// 	/*
-// 	   add two more parameters, targetaddress, memberlist, consistency=4
-// 	*/
-// 	// modeldata target & memberlist
-// 	consistency := 2
-// 	target := "localhost:27000"
-// 	var memberList []MemberID
-// 	p := new(MemberID)
-// 	p.LocalIP = "localhost:27001"
-// 	p.JoinedTime = time.Now()
-// 	p1 := new(MemberID)
-// 	p1.LocalIP = "localhost:27002"
-// 	p1.JoinedTime = time.Now()
-// 	p2 := new(MemberID)
-// 	p2.LocalIP = "localhost:27003"
-// 	p2.JoinedTime = time.Now()
-// 	*memberList = append(*memberList, p)
-// 	*memberList = append(*memberList, p1)
-// 	*memberList = append(*memberList, p2)
-// 	// find
-// 	for i, Member := range *memberList {
-// 		if (&Member.LocalIP).Equal(&(message.Member)) {
-// 			*memberList = append((*memberList)[:i], (*memberList)[i+1:]...)
-// 			fmt.Println("A member voluntarily left the group:")
-// 			fmt.Println(message.Member)
-// 			fmt.Println()
-
-// 			logMsg, _ := json.Marshal(message.Member)
-// 			mp2util.WriteLog("Delete: Member voluntarily left the group:" + string(logMsg))
-
-// 			for i := 0; i < 2; i++ {
-// 				sendFileToClient()
-// 			}
-
-// 		}
-// 	}
-// if getlocaladdress() == leaderAddress:
-// address = findaddress(sdfsfilename);
-// if address in memberlist:
-// _,e = sendfile(localfilename, sdfsfilname, []address)
-// if e: resend??
-// else connect master:
-// reconnect master if connection fail;
-// if failed over 3 times:
-// reelect leader and reconnecr leader;
-// ask leader for sending address.[]address
-// if address in memberlist:
-// _,e = sendfile(localfilename, sdfsfilname, []address)
-// if e: resend??
-// }
-
-var masterAddress = "127.0.0.1"
+func put(localfilename string, sdfsfilename string, addresses []string) {
+	//should be one more paramater for function: addresses []string
+	// addresses := []string{"localhost:27001"}
+	for _, address := range addresses {
+		SendFileTo(address+":27001", localfilename, sdfsfilename)
+	}
+}
 
 func GetLocalIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
@@ -180,11 +135,11 @@ func GetLocalIP() net.IP {
 	return localAddr.IP
 }
 
-func getIP() []string {
+func getIP(masterAddress string) []string {
 	var localIP string
 	localIP = GetLocalIP().String()
 	var list []string
-	client, e := rpc.DialHTTP("tcp", "127.0.0.1:1105")
+	client, e := rpc.DialHTTP("tcp", masterAddress+":1105")
 	if e != nil {
 		log.Fatal("Error when dial")
 	}
@@ -196,9 +151,47 @@ func getIP() []string {
 	return list
 }
 
+func getFileNodes(fileName string) ([]string, error) {
+	var nodes []string
+	client, e := rpc.DialHTTP("tcp", "localhost:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+		return nodes, e
+	}
+	err := client.Call("IP.ReplyFilesNodes", fileName, &nodes)
+	if err != nil {
+		log.Fatal("Reply from master error", err)
+		return nodes, err
+	}
+	fmt.Println(nodes)
+	return nodes, nil
+}
+
+func get(sdfsFileName string, localFileName string) error {
+	nodes, err := getFileNodes(sdfsFileName)
+	if err != nil {
+		log.Fatal("error when get...", err)
+		return err
+	}
+
+}
+
+func showLocalStoredFiles() []string {
+	fileInfo, err := ioutil.ReadDir("../server")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var files []string
+	for _, file := range fileInfo {
+		files = append(files, file.Name())
+	}
+	fmt.Println(files)
+	return files
+}
+
 func main() {
 	// initi()
-	// isLeader := false
-	// SendFileTo("localhost:27001", "dummyfile.txt", "receivedfile.txt")
-	getIP()
+	// type "put dummyfile.txt receivedfile.txt" for test
+	// getFileNodes("dummy")
+	showLocalStoredFiles()
 }
