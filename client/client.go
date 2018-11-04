@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -105,22 +106,44 @@ func fillString(retunString string, toLength int) string {
 	return retunString
 }
 
+/*
+	This function is not okay. The parameters name are confused.
+		It will append a timestamp to the file name which indicates the version.
+*/
 func SendFileTo(address string, localfilename string, sdfsfilename string) {
 	connection, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
 	}
 	defer connection.Close()
+	t := time.Now()
+	tUnix := int(t.Unix())
+	sdfsfilename += "-" + strconv.Itoa(tUnix)
 	fmt.Println("Client: Connected to server, start sending the file")
 	sendFile(connection, localfilename, sdfsfilename)
 }
 
-func put(localfilename string, sdfsfilename string, addresses []string) {
+/*
+	Insert or update a file on sdfs.
+
+*/
+func put(localfilename string, sdfsfilename string) {
 	//should be one more paramater for function: addresses []string
 	// addresses := []string{"localhost:27001"}
-	for _, address := range addresses {
-		SendFileTo(address+":27001", localfilename, sdfsfilename)
+	nodes, err := getFileNodes(sdfsfilename)
+	// Insert a new file
+	if err == nil {
+		for _, address := range nodes {
+			SendFileTo(address+":27001", localfilename, sdfsfilename)
+		}
+	} else { // update a file
+		files, e := getNodeFiles(nodes[0])
+		if e != nil {
+			log.Fatal(e)
+		}
+
 	}
+
 }
 
 func GetLocalIP() net.IP {
@@ -135,6 +158,9 @@ func GetLocalIP() net.IP {
 	return localAddr.IP
 }
 
+/*
+	This function will return following 3 IPs of the given parameter-address.
+*/
 func getIP(masterAddress string) []string {
 	var localIP string
 	localIP = GetLocalIP().String()
@@ -151,6 +177,10 @@ func getIP(masterAddress string) []string {
 	return list
 }
 
+/*
+	Command "ls"
+	This function will return non-nil error when there is no such file in sdfs.
+*/
 func getFileNodes(fileName string) ([]string, error) {
 	var nodes []string
 	client, e := rpc.DialHTTP("tcp", "localhost:1105")
@@ -163,17 +193,62 @@ func getFileNodes(fileName string) ([]string, error) {
 		log.Fatal("Reply from master error", err)
 		return nodes, err
 	}
-	fmt.Println(nodes)
+	// fmt.Println(nodes)
 	return nodes, nil
 }
 
+/*
+	This function will return all files stored on a machine.
+*/
+func getNodeFiles(nodeAddress string) ([]string, error) {
+	var files []string
+	client, e := rpc.DialHTTP("tcp", "localhost:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+		return nil, e
+	}
+	e = client.Call("IP.ReplyNodeFiles", nodeAddress, &files)
+	if e != nil {
+		log.Fatal("Reply from server error", e)
+		return nil, e
+	}
+	return files, nil
+}
+
+/*
+	Get the latest version of "sdfsFileName", saving as "localFilename".
+
+	Note: Have not implemented "latest"
+*/
+
 func get(sdfsFileName string, localFileName string) error {
-	nodes, err := getFileNodes(sdfsFileName)
+	// nodes, err := getFileNodes(sdfsFileName)
+	_, err := getFileNodes(sdfsFileName)
 	if err != nil {
 		log.Fatal("error when get...", err)
 		return err
 	}
-
+	// localIP := GetLocalIP().String()
+	client, e := rpc.DialHTTP("tcp", "localhost:1105")
+	if e != nil {
+		log.Fatal("Error when dial")
+		return e
+	}
+	var args []string
+	args = append(args, sdfsFileName)
+	args = append(args, localFileName)
+	args = append(args, "127.0.0.1")
+	var reply bool
+	err = client.Call("IP.ReplyFile", args, &reply)
+	if err != nil {
+		log.Fatal("Reply file get error...", err)
+		return err
+	}
+	if reply != true {
+		log.Fatal("Send file failure")
+		return errors.New("Send file failure")
+	}
+	return nil
 }
 
 func showLocalStoredFiles() []string {
@@ -193,5 +268,6 @@ func main() {
 	// initi()
 	// type "put dummyfile.txt receivedfile.txt" for test
 	// getFileNodes("dummy")
-	showLocalStoredFiles()
+	// showLocalStoredFiles()
+	get("dummyFile.txt", "dummy")
 }
