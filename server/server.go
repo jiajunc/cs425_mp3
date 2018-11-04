@@ -1,7 +1,8 @@
 package main
 
 import (
-	"bufio"
+	// "bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,6 +26,11 @@ type MemberID struct {
 var memberList []MemberID
 
 type IP string
+
+var fileToNodes = struct {
+	sync.RWMutex
+	m map[string][]string
+}{m: make(map[string][]string)}
 
 func TcpListening() {
 	server, err := net.Listen("tcp", "localhost:27001")
@@ -78,31 +85,8 @@ func TcpListening() {
 	}
 }
 
-func initi() {
-	fmt.Println("Enter command to put, get, update or delete file")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		userInput := strings.Split(scanner.Text(), " ")
-		fmt.Println(userInput)
-		userCommand := userInput[0]
-		fmt.Println(userCommand)
+func (t *IP) replyFile() error {
 
-		switch userCommand {
-		case "put":
-			fmt.Println("running put command")
-		case "get":
-			fmt.Println("rinning get command")
-		case "delete":
-			fmt.Println("running delete command")
-		case "exit":
-			return
-		default:
-			fmt.Println("Wrong input! Please try again:")
-			fmt.Println("Enter 'put localfilename sdfsfilename' to upload file.")
-			fmt.Println("Enter 'get sdfsfilename localfilename' to fetch file.")
-			fmt.Println("Enter 'delete sdfsfilename' to delete file.")
-		}
-	}
 }
 
 func (t *IP) ReplyIPAddress(ip string, returnList *[]string) error {
@@ -119,6 +103,18 @@ func (t *IP) ReplyIPAddress(ip string, returnList *[]string) error {
 	return nil
 }
 
+func (t *IP) ReplyFilesNodes(fileName string, returnList *[]string) error {
+	fileToNodes.RLock()
+	v, ok := fileToNodes.m[fileName]
+	if ok == false {
+		fmt.Println("There is no such file...")
+		return errors.New("There is no such file")
+	}
+	*returnList = v
+	fileToNodes.RUnlock()
+	return nil
+}
+
 func RespondIPListening() {
 	IP_reply := new(IP)
 	rpc.Register(IP_reply)
@@ -127,15 +123,18 @@ func RespondIPListening() {
 	if e != nil {
 		log.Fatal("Listen error", e)
 	}
+	fmt.Println("1105 succeed")
 	go http.Serve(l, nil)
 }
 
 func main() {
-	// TcpListening()
+	go TcpListening()
 	var m1 = MemberID{LocalIP: "127.0.0.1"}
+	fileToNodes.m["dummy"] = append(fileToNodes.m["dummy"], "test")
 	memberList = append(memberList, m1)
 	RespondIPListening()
 	for {
 
 	}
+
 }
